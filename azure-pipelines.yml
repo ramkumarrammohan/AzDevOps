@@ -1,0 +1,60 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- master
+
+pool:
+  vmImage: windows-2019
+
+steps:
+- script: echo Pipeline Started!!!
+  displayName: 'Start Message'
+
+- checkout: self
+  submodules: true
+  
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.x'
+
+- script: |
+    cd $(Build.SourcesDirectory)
+    python -m pip install aqtinstall
+  displayName: 'Install aqtinstall'
+
+# 1
+# aqt install-qt windows desktop 6.2.0 win64_mingw81 -m all
+- script: |
+    cd $(Build.SourcesDirectory)
+    python -m aqt install-qt --outputdir $(Build.BinariesDirectory)\\Qt windows desktop 5.15.0 win64_msvc2019_64 -m all
+  displayName: 'Install Qt 5.15.0'
+
+# 2
+- script: |
+    cd $(Build.SourcesDirectory)
+    echo $(Build.SourcesDirectory)
+    echo %Build.SourcesDirectory%
+    call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat" amd64
+    $(Build.BinariesDirectory)\\Qt\\5.15.0\\msvc2019_64\\bin\\qmake.exe
+  displayName: 'Run qmake'
+
+# 3
+- script: |
+    cd $(Build.SourcesDirectory)
+    call "C:\\Program Files (x86)\\Microsoft Visual Studio\\2019\\Enterprise\\VC\\Auxiliary\\Build\\vcvarsall.bat" amd64
+    nmake release
+  displayName: 'Build!'
+
+# 4
+- task: CopyFiles@2
+  inputs:
+    contents: |
+      $(Build.SourcesDirectory)\\release\\az-qt-pipeline-demo.exe
+    targetFolder: $(Build.ArtifactStagingDirectory)
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathToPublish: $(Build.ArtifactStagingDirectory)
+    artifactName: Windows_release
